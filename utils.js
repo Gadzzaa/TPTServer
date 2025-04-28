@@ -2,6 +2,7 @@ require('dotenv').config();
 const { MongoClient, ObjectId } = require('mongodb');
 const crypto = require('crypto-js');
 const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
 
 let mongoDBClient;
 
@@ -21,6 +22,8 @@ async function initCollections() {
   const db = await getDatabase();
   await db.collection('users').createIndex({ username: 1 }, { unique: true });
   await db.collection('portfolios').createIndex({ userId: 1 }, { unique: true });
+  await db.collection('sessions').createIndex({ token: 1 }, { unique: true });
+  await db.collection('sessions').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 }
 
 const dbName = 'PaperTrade';
@@ -42,12 +45,46 @@ async function login({ username, password }) {
   try {
     const db = await getDatabase();
     const user = await db.collection('users').findOne({ username });
-    const decryptPassword = decryptData(user.password)
-    console.log(decryptPassword,password)
-    if(decryptPassword != password)
-      return { _id: user._id, username: user.username };
+    const decryptedPassword = JSON.parse(decryptData(user.password))
+
+    if(!user || decryptedPassword != password) {
+      return null;
+    }
+
+    // Create session  token
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    
+    await db.collection('sessions').insertOne({
+      token,
+      userId: user._id,
+      expiresAt,
+      createdAt: new Date()
+    });
+
+    return { 
+      token,
+      userId: user._id.toString(),
+      username: user.username
+    };
   } catch (err) {
     console.error('Login error:', err);
+    return null;
+  }
+}
+
+async function validateSession(token) {
+  try {
+    const db = await getDatabase();
+    const session = await db.collection('sessions').findOne({ 
+      token,
+      expiresAt: { $gt: new Date() }
+    });
+    
+    if (!session) return null;
+    return session.userId;
+  } catch (err) {
+    console.error('Session validation error:', err);
     return null;
   }
 }
@@ -115,7 +152,7 @@ async function updatePortfolio(userId, tokenMint, amount, isBuy) {
     : { $inc: { [`tokens.${tokenMint}`]: -amount } };
 
   await db.collection('portfolios').updateOne(
-    { userId: new ObjectId(userId) },
+    { userId: userId },
     update,
     { upsert: true }
   );
@@ -128,7 +165,7 @@ async function updateBalance(userId, amount, isDeposit) {
     : { $inc: { balance: -amount } };
 
   await db.collection('users').updateOne(
-    { _id: new ObjectId(userId) },
+    { userId: userId },
     update
   );
 }
@@ -136,8 +173,8 @@ async function updateBalance(userId, amount, isDeposit) {
 async function getPortfolio(userId) {
   const db = await getDatabase();
   const [user, portfolio] = await Promise.all([
-    db.collection('users').findOne({ _id: new ObjectId(userId) }),
-    db.collection('portfolios').findOne({ userId: new ObjectId(userId) })
+    db.collection('users').findOne({ _id: userId }),
+    db.collection('portfolios').findOne({ userId: userId })
   ]);
 
   return {
@@ -154,5 +191,6 @@ module.exports = {
   calculateTokenSale,
   updatePortfolio,
   updateBalance,
-  getPortfolio
+  getPortfolio, 
+  validateSession
 };

@@ -14,6 +14,7 @@ const TEST_TOKENS = {
 let userId;
 let authToken;
 
+// 🧠 Create account (optional)
 async function createAccount() {
   try {
     console.log('🆕 Creating test account...');
@@ -31,10 +32,12 @@ async function createAccount() {
   }
 }
 
+// 🧠 Login + store token
 async function login() {
   try {
     const response = await axios.post(`${API_BASE_URL}/login`, TEST_USER);
-    userId = response.data._id;
+    userId = response.data.userId;
+    authToken = response.data.token; // 🛡️ Save the session token!
     console.log('✅ Login successful');
     return true;
   } catch (error) {
@@ -43,9 +46,19 @@ async function login() {
   }
 }
 
+// 🧠 Send Authorization header
+function authHeader() {
+  return {
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+    }
+  };
+}
+
+// 📈 Fetch portfolio
 async function getPortfolio() {
   try {
-    const response = await axios.get(`${API_BASE_URL}/portfolio/${userId}`);
+    const response = await axios.get(`${API_BASE_URL}/portfolio/${userId}`, authHeader());
     console.log('💰 Portfolio:', response.data);
     return response.data;
   } catch (error) {
@@ -54,16 +67,16 @@ async function getPortfolio() {
   }
 }
 
+// 🛒 Buy token
 async function testBuy(tokenMint, solAmount, slippage = 2, fee = 0.1) {
   try {
     console.log(`\n🛒 Buying ${solAmount} SOL of ${tokenMint.substring(0, 10)}...`);
     const response = await axios.post(`${API_BASE_URL}/buy`, {
-      userId,
       tokenMint,
       solAmount,
       slippage,
       fee
-    });
+    }, authHeader());
     console.log('✅ Buy successful:', response.data);
     return response.data;
   } catch (error) {
@@ -72,16 +85,16 @@ async function testBuy(tokenMint, solAmount, slippage = 2, fee = 0.1) {
   }
 }
 
+// 💰 Sell token
 async function testSell(tokenMint, tokenAmount, slippage = 2, fee = 0.1) {
   try {
     console.log(`\n💰 Selling ${tokenAmount} of ${tokenMint.substring(0, 10)}...`);
     const response = await axios.post(`${API_BASE_URL}/sell`, {
-      userId,
       tokenMint,
       tokenAmount,
       slippage,
       fee
-    });
+    }, authHeader());
     console.log('✅ Sell successful:', response.data);
     return response.data;
   } catch (error) {
@@ -90,12 +103,13 @@ async function testSell(tokenMint, tokenAmount, slippage = 2, fee = 0.1) {
   }
 }
 
+// 🏁 Main runner
 async function runTests() {
   console.log('🚀 Starting trading tests...');
   
-  //if (!(await createAccount())) return;
+  await createAccount(); // Uncomment if you want auto-creation
   if (!(await login())) return;
-  
+
   await getPortfolio();
 
   const buy1 = await testBuy(TEST_TOKENS.COIN1, 0.5);

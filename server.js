@@ -8,18 +8,36 @@ const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
+async function authenticate(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Authorization token required' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const userId = await utils.validateSession(token);
+  
+  if (!userId) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  req.userId = userId;
+  next();
+}
+
 // Auth endpoints
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
-  const user = await utils.login({ username, password });
+  const result = await utils.login({ username, password });
   
-  if (!user) {
+  if (!result) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
 
   res.json({
-    _id: user._id,
-    username: user.username
+    token: result.token,
+    userId: result.userId,
+    username: result.username
   });
 });
 
@@ -35,11 +53,12 @@ app.post('/api/create-account', async (req, res) => {
 });
 
 // Trading endpoints
-app.post('/api/buy', async (req, res) => {
+app.post('/api/buy', authenticate, async (req, res) => {
   try {
-    const { userId, tokenMint, solAmount, slippage = 2, fee = 0.1 } = req.body;
-    
-    if (!ObjectId.isValid(userId) || !tokenMint || !solAmount || solAmount <= 0) {
+    const { tokenMint, solAmount, slippage = 2, fee = 0.1 } = req.body;
+    const userId = req.userId;
+
+    if (!tokenMint || !solAmount || solAmount <= 0) {
       return res.status(400).json({ error: 'Invalid parameters' });
     }
 
@@ -63,11 +82,12 @@ app.post('/api/buy', async (req, res) => {
   }
 });
 
-app.post('/api/sell', async (req, res) => {
+app.post('/api/sell', authenticate, async (req, res) => {
   try {
-    const { userId, tokenMint, tokenAmount, slippage = 2, fee = 0.1 } = req.body;
-    
-    if (!ObjectId.isValid(userId) || !tokenMint || !tokenAmount || tokenAmount <= 0) {
+    const { tokenMint, tokenAmount, slippage = 2, fee = 0.1 } = req.body;
+    const userId = req.userId;
+
+    if (!tokenMint || !tokenAmount || tokenAmount <= 0) {
       return res.status(400).json({ error: 'Invalid parameters' });
     }
 
@@ -92,14 +112,12 @@ app.post('/api/sell', async (req, res) => {
 });
 
 // Portfolio endpoint
-app.get('/api/portfolio/:userId', async (req, res) => {
+app.get('/api/portfolio/:userId', authenticate, async (req, res) => {
   try {
-    if (!ObjectId.isValid(req.params.userId)) {
-      return res.status(400).json({ error: 'Invalid user ID' });
-    }
 
-    const portfolio = await utils.getPortfolio(req.params.userId);
+    const portfolio = await utils.getPortfolio(req.userId);
     res.json(portfolio);
+    
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
