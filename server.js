@@ -2,10 +2,11 @@ require('dotenv').config();
 const express = require('express');
 const { ObjectId } = require('mongodb');
 const utils = require('./utils');
-
+const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
+app.use(cors());
 app.use(express.json());
 
 async function authenticate(req, res, next) {
@@ -16,7 +17,7 @@ async function authenticate(req, res, next) {
 
   const token = authHeader.split(' ')[1];
   const userId = await utils.validateSession(token);
-  
+
   if (!userId) {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
@@ -29,7 +30,7 @@ async function authenticate(req, res, next) {
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   const result = await utils.login({ username, password });
-  
+
   if (!result) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
@@ -111,13 +112,21 @@ app.post('/api/sell', authenticate, async (req, res) => {
   }
 });
 
+app.post('/api/get-balance', authenticate, async (req, res) => {
+  try {
+    const balance = await utils.getBalance(req.userId);
+    res.json(balance);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
 // Portfolio endpoint
 app.get('/api/portfolio/:userId', authenticate, async (req, res) => {
   try {
 
     const portfolio = await utils.getPortfolio(req.userId);
     res.json(portfolio);
-    
+
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
