@@ -136,6 +136,34 @@ app.get('/api/reset/:userId', authenticate, async (req, res) => {
   }
 });
 
+// Set a user's balance
+
+app.post('/api/set-balance', authenticate, async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const userId = req.userId;
+
+    if (typeof amount !== 'number' || amount < 1) {
+      return res.status(400).json({ error: 'Invalid amount - must be higher than 1 SOL.' });
+    }
+
+    await utils.setBalance(userId, amount);
+
+    const portfolio = await utils.getPortfolio(userId);
+    res.json({
+      success: true,
+      newBalance: portfolio.solBalance,
+      message: `Balance successfully set to ${amount} SOL`
+    });
+    
+  } catch (error) {
+    res.status(400).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
 // check session token
 app.get('/api/check-session', async (req, res) => {
   try {

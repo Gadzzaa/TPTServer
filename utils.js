@@ -175,6 +175,18 @@ async function updateBalance(userId, amount, isDeposit) {
     }
 }
 
+async function setBalance(userId, amount) {
+  const db = await getDatabase();
+  const result = await db.collection('users').updateOne(
+    { _id: userId },
+    { $set: { balance: amount } }
+  );
+  
+  if (result.modifiedCount === 0) {
+    throw new Error("Balance update failed - user not found");
+  }
+}
+
 async function getPortfolio(userId) {
   const db = await getDatabase();
   const [user, portfolio] = await Promise.all([
@@ -219,5 +231,6 @@ module.exports = {
   updateBalance,
   getPortfolio, 
   validateSession,
-  resetPortfolio
+  resetPortfolio,
+  setBalance
 };

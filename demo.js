@@ -74,6 +74,20 @@ async function resetWallet() {
   }
 }
 
+async function setWallet(amount = 1000) {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/set-balance`, {
+      amount
+    }, authHeader());
+    
+    console.log('💰 New balance:', response.data.newBalance);
+    console.log(response.data.message);
+    return response.data.success;
+  } catch (error) {
+    console.error('❌ Failed to set balance:', error.response?.data || error.message);
+    return null;
+  }
+}
 
 async function testBuy(tokenMint, solAmount, slippage = 2, fee = 0.1) {
   try {
@@ -132,6 +146,7 @@ async function runTests() {
 
 
   await resetWallet();
+  await setWallet()
 }
 
 runTests().catch(err => {
