@@ -41,6 +41,7 @@ app.post('/api/login', async (req, res) => {
   });
 });
 
+
 app.post('/api/create-account', async (req, res) => {
   const { username, password } = req.body;
   const userId = await utils.createAccount({ username, password });
@@ -120,6 +121,35 @@ app.get('/api/portfolio/:userId', authenticate, async (req, res) => {
     
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+// Reset User's portofolio
+app.get('/api/reset/:userId', authenticate, async (req, res) => {
+  try {
+
+    const portfolio = await utils.resetPortfolio(req.userId);
+    res.json(portfolio);
+    
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// check session token
+app.get('/api/check-session', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.json({ valid: false });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const isValid = await utils.validateSession(token) !== null;
+    
+    res.json({ valid: isValid });
+  } catch (error) {
+    res.status(500).json({ valid: false });
   }
 });
 

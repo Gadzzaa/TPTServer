@@ -14,7 +14,6 @@ const TEST_TOKENS = {
 let userId;
 let authToken;
 
-// 🧠 Create account (optional)
 async function createAccount() {
   try {
     console.log('🆕 Creating test account...');
@@ -32,7 +31,6 @@ async function createAccount() {
   }
 }
 
-// 🧠 Login + store token
 async function login() {
   try {
     const response = await axios.post(`${API_BASE_URL}/login`, TEST_USER);
@@ -46,7 +44,6 @@ async function login() {
   }
 }
 
-// 🧠 Send Authorization header
 function authHeader() {
   return {
     headers: {
@@ -55,7 +52,6 @@ function authHeader() {
   };
 }
 
-// 📈 Fetch portfolio
 async function getPortfolio() {
   try {
     const response = await axios.get(`${API_BASE_URL}/portfolio/${userId}`, authHeader());
@@ -67,7 +63,18 @@ async function getPortfolio() {
   }
 }
 
-// 🛒 Buy token
+async function resetWallet() {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/reset/${userId}`, authHeader());
+    console.log('Wallet Reseted:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Failed to reset.:', error.response?.data || error.message);
+    return null;
+  }
+}
+
+
 async function testBuy(tokenMint, solAmount, slippage = 2, fee = 0.1) {
   try {
     console.log(`\n🛒 Buying ${solAmount} SOL of ${tokenMint.substring(0, 10)}...`);
@@ -85,7 +92,6 @@ async function testBuy(tokenMint, solAmount, slippage = 2, fee = 0.1) {
   }
 }
 
-// 💰 Sell token
 async function testSell(tokenMint, tokenAmount, slippage = 2, fee = 0.1) {
   try {
     console.log(`\n💰 Selling ${tokenAmount} of ${tokenMint.substring(0, 10)}...`);
@@ -103,26 +109,29 @@ async function testSell(tokenMint, tokenAmount, slippage = 2, fee = 0.1) {
   }
 }
 
-// 🏁 Main runner
 async function runTests() {
   console.log('🚀 Starting trading tests...');
   
-  await createAccount(); // Uncomment if you want auto-creation
+  // await createAccount(); // Uncomment if you want auto-creation
   if (!(await login())) return;
 
-  await getPortfolio();
 
   const buy1 = await testBuy(TEST_TOKENS.COIN1, 0.5);
+  await getPortfolio();
+
+
   const buy2 = await testBuy(TEST_TOKENS.COIN2, 0.3, 3, 0.5);
   
   await getPortfolio();
-  
   if (buy1) await testSell(TEST_TOKENS.COIN1, buy1.tokensReceived / 2);
   if (buy2) await testSell(TEST_TOKENS.COIN2, buy2.tokensReceived / 2, 1.5, 0.2);
   
   await getPortfolio();
-  
+
   console.log('\n🏁 All tests completed');
+
+
+  await resetWallet();
 }
 
 runTests().catch(err => {

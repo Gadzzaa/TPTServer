@@ -160,14 +160,19 @@ async function updatePortfolio(userId, tokenMint, amount, isBuy) {
 
 async function updateBalance(userId, amount, isDeposit) {
   const db = await getDatabase();
+
   const update = isDeposit
     ? { $inc: { balance: amount } }
     : { $inc: { balance: -amount } };
 
-  await db.collection('users').updateOne(
-    { userId: userId },
-    update
-  );
+    const result = await db.collection('users').updateOne(
+      { _id: userId },  // Fixed filter
+      update  // Direct atomic operator
+    );
+  
+    if (result.modifiedCount === 0) {
+      throw new Error("Balance update failed - user not found");
+    }
 }
 
 async function getPortfolio(userId) {
@@ -183,6 +188,27 @@ async function getPortfolio(userId) {
   };
 }
 
+async function resetPortfolio(userId) {
+  try {
+    const db = await getDatabase();
+    
+    await db.collection('portfolios').updateOne(
+      { userId: userId },
+      { $set: { tokens: {}, updatedAt: new Date() } }
+    );
+    
+    await db.collection('users').updateOne(
+      { _id: userId },
+      { $set: { balance: 100 } }
+    );
+    
+    return await getPortfolio(userId);
+  } catch (err) {
+    console.error('Reset portfolio error:', err);
+    throw err;
+  }
+}
+
 module.exports = {
   connectToMongoDB,
   login,
@@ -192,5 +218,6 @@ module.exports = {
   updatePortfolio,
   updateBalance,
   getPortfolio, 
-  validateSession
+  validateSession,
+  resetPortfolio
 };
