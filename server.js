@@ -64,6 +64,15 @@ app.post('/api/buy', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Invalid parameters' });
     }
 
+    // Check user balance first
+    const currentBalance = await utils.getPortfolio(userId);
+    if (currentBalance.solBalance < solAmount) {
+      return res.status(400).json({ 
+        success: false,
+        error: `Insufficient balance. You have ${currentBalance} SOL but need ${solAmount} SOL`
+      });
+    }
+
     const { tokensBought, feeAmount } = await utils.calculateTokenPurchase(
       tokenMint, solAmount, slippage, fee
     );
@@ -77,7 +86,8 @@ app.post('/api/buy', authenticate, async (req, res) => {
       success: true,
       tokensReceived: tokensBought,
       solSpent: solAmount,
-      fees: { protocol: feeAmount, slippage: `${slippage}%` }
+      fees: { protocol: feeAmount, slippage: `${slippage}%` },
+      newBalance: currentBalance - solAmount
     });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
