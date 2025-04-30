@@ -3,6 +3,7 @@ const { MongoClient, ObjectId } = require('mongodb');
 const crypto = require('crypto-js');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
+const { Connection, PublicKey, clusterApiUrl } = require('@solana/web3.js');
 
 let mongoDBClient;
 
@@ -122,8 +123,8 @@ async function getTokenPrice(tokenMint) {
   return response.data?.data?.[tokenMint]?.price;
 }
 
-async function calculateTokenPurchase(tokenMint, solAmount, slippage = 2, fee = 0.1) {
-  const tokenPrice = await getTokenPrice(tokenMint);
+async function calculateTokenPurchase(tokenPrice, solAmount, slippage = 2, fee = 0.1) {
+  // const tokenPrice = await getTokenPrice(tokenMint);
   if (!tokenPrice) throw new Error('Token price not found');
 
   const effectivePrice = tokenPrice * (1 + (slippage / 100));
@@ -133,8 +134,8 @@ async function calculateTokenPurchase(tokenMint, solAmount, slippage = 2, fee = 
   return { tokensBought, feeAmount, effectivePrice };
 }
 
-async function calculateTokenSale(tokenMint, tokenAmount, slippage = 2, fee = 0.1) {
-  const tokenPrice = await getTokenPrice(tokenMint);
+async function calculateTokenSale(tokenPrice, tokenAmount, slippage = 2, fee = 0.1) {
+  //const tokenPrice = await getTokenPrice(tokenMint);
   if (!tokenPrice) throw new Error('Token price not found');
 
   const effectivePrice = tokenPrice * (1 - (slippage / 100));
@@ -221,6 +222,65 @@ async function resetPortfolio(userId) {
   }
 }
 
+// const PUMP_FUN_PROGRAM_ID = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P';
+// const RPC = 'https://mainnet.helius-rpc.com/?api-key=c3f33946-3012-4d3d-bd1e-b8f2da31a29e'
+
+// async function getPumpFunPrice(tokenMint) {
+//   try {
+//     const connection = new Connection(RPC);
+//     const mintPublicKey = new PublicKey(tokenMint);
+
+//     // 1. Get recent transactions for this token
+//     const signatures = await connection.getSignaturesForAddress(mintPublicKey, {
+//       limit: 1,
+//     });
+
+//     // 2. Find latest Pump.fun swap transaction
+//     for (const { signature } of signatures) {
+//       const tx = await connection.getParsedTransaction(signature, {
+//         maxSupportedTransactionVersion: 0,
+//       });
+
+//       // 3. Verify Pump.fun transaction
+//       if (tx?.transaction.message.instructions.some(ix => 
+//         ix.programId.toBase58() === PUMP_FUN_PROGRAM_ID
+//       )) {
+//         // 4. Parse swap values from logs
+//         console.log(tx.meta.preBalances, tx.meta.preTokenBalances)
+//         console.log(tx.meta.postBalances, tx.meta.postTokenBalances)
+//         const logs = tx.meta.logMessages;
+//         const buyLog = logs.find(l => l.includes('buy'));
+//         const sellLog = logs.find(l => l.includes('sell'));
+
+//         if (!buyLog && !sellLog) continue;
+
+//         // 5. Extract numeric values from log
+//         const logEntry = buyLog || sellLog;
+//         const matches = logEntry.match(/amount_in=(\d+).*amount_out=(\d+)/);
+        
+//         if (!matches) continue;
+
+//         const solAmount = parseInt(matches[1]) / 1e9; // SOL has 9 decimals
+//         const tokenAmount = parseInt(matches[2]) / 1e9; // Assume token has 9 decimals
+        
+//         if (solAmount > 0 && tokenAmount > 0) {
+//           return {
+//             price: solAmount / tokenAmount,
+//             type: buyLog ? 'buy' : 'sell',
+//             timestamp: new Date(tx.blockTime * 1000),
+//             signature
+//           };
+//         }
+//       }
+//     }
+
+//     throw new Error('No recent Pump.fun trades found');
+//   } catch (error) {
+//     console.error('Price check failed:', error.message);
+//     return null;
+//   }
+// }
+
 module.exports = {
   connectToMongoDB,
   login,
@@ -232,5 +292,6 @@ module.exports = {
   getPortfolio, 
   validateSession,
   resetPortfolio,
-  setBalance
+  setBalance,
+  // getPumpFunPrice
 };

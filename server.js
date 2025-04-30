@@ -57,7 +57,7 @@ app.post('/api/create-account', async (req, res) => {
 // Trading endpoints
 app.post('/api/buy', authenticate, async (req, res) => {
   try {
-    const { tokenMint, solAmount, slippage = 2, fee = 0.1 } = req.body;
+    const { tokenMint, solAmount, tokenPrice, slippage = 2, fee = 0.1 } = req.body;
     const userId = req.userId;
 
     if (!tokenMint || !solAmount || solAmount <= 0) {
@@ -74,7 +74,7 @@ app.post('/api/buy', authenticate, async (req, res) => {
     }
 
     const { tokensBought, feeAmount } = await utils.calculateTokenPurchase(
-      tokenMint, solAmount, slippage, fee
+      tokenPrice, solAmount, slippage, fee
     );
 
     await Promise.all([
@@ -96,7 +96,7 @@ app.post('/api/buy', authenticate, async (req, res) => {
 
 app.post('/api/sell', authenticate, async (req, res) => {
   try {
-    const { tokenMint, tokenAmount, slippage = 2, fee = 0.1 } = req.body;
+    const { tokenMint, tokenAmount, tokenPrice, slippage = 2, fee = 0.1 } = req.body;
     const userId = req.userId;
 
     if (!tokenMint || !tokenAmount || tokenAmount <= 0) {
@@ -104,7 +104,7 @@ app.post('/api/sell', authenticate, async (req, res) => {
     }
 
     const { netSol, feeAmount } = await utils.calculateTokenSale(
-      tokenMint, tokenAmount, slippage, fee
+      tokenPrice, tokenAmount, slippage, fee
     );
 
     await Promise.all([

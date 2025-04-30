@@ -1,6 +1,6 @@
 const axios = require('axios');
 require('dotenv').config();
-
+const { getPumpFunPrice } = require('./utils')
 const API_BASE_URL = 'http://localhost:3000/api';
 const TEST_USER = {
   username: 'testtrader',
@@ -149,6 +149,16 @@ async function runTests() {
   await setWallet()
 }
 
-runTests().catch(err => {
-  console.error('🔥 Test suite failed:', err);
-});
+// runTests().catch(err => {
+//   console.error('🔥 Test suite failed:', err);
+// });
+
+const TOKEN_MINT = 'DwtbAzwg5PkRMarRHjFTBGHq7HW3AnMPWmW5wQ917WAZ';
+
+getPumpFunPrice(TOKEN_MINT)
+  .then(priceData => {
+    if (priceData) {
+      console.log(`Last ${priceData.type} price: ${priceData.price} SOL`);
+      console.log(`Transaction: https://solscan.io/tx/${priceData.signature}`);
+    }
+  });
