@@ -40,7 +40,7 @@ RPC=https://your-helius-rpc-endpoint
 node server.js
 ```
 
-> The server will run on `http://localhost:5000/` by default
+> The server will run on `http://localhost:3000/` by default
 
 ---
 
